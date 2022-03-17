@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func homePage(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +18,7 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 func handleRequests() {
 	Router := mux.NewRouter().StrictSlash(true)
 	Router.HandleFunc("/", homePage)
+	Router.HandleFunc("/api/messages", sync).Methods("GET")
 	Router.HandleFunc("/message", postMessage).Methods("POST")
 	Router.HandleFunc("/message", updateMessage).Methods("PUT")
 	Router.HandleFunc("/message/{uuid}", deleteMessage).Methods("DELETE")
@@ -27,6 +29,7 @@ func postMessage(w http.ResponseWriter, r *http.Request) {
 	var data Service.Message
 	fmt.Print(data)
 	err := json.NewDecoder(r.Body).Decode(&data)
+	fmt.Print(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -60,4 +63,23 @@ func main() {
 	}
 
 	handleRequests()
+}
+
+func sync(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := r.URL.Query()
+	// convert query to int
+	idx, err := strconv.Atoi(params["idx"][0])
+	if err != nil {		
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	qidx, err2 := strconv.Atoi(params["qidx"][0])
+	if err2 != nil {		
+		http.Error(w, err2.Error(), http.StatusBadRequest)
+		return
+	}
+	// call sync
+	messages := Service.SyncMessages(idx, qidx)
+	json.NewEncoder(w).Encode(messages)
 }
