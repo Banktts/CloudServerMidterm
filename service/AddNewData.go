@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"sync"
+	"net/http"
 )
 
 type Message struct {
@@ -12,15 +14,24 @@ type Message struct {
 	Likes   int    `json:"likes"`
 }
 
-func CreateNewMessage(data Message) {
+func CreateNewMessage(data Message, w *http.ResponseWriter) {
+	testIdx := getIdxFromMapsTable(data.Uuid)
+	if testIdx != -1 {
+		(*w).WriteHeader(http.StatusConflict)
+		return
+	}
 
 	Idx := getMessageLastIdx()
-	go insertNewUUIDToMapsTable(data.Uuid, Idx+1)
-	go insertNewMessageToDatasTable(data)
-
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go insertNewUUIDToMapsTable(data.Uuid, Idx+1, &wg)
+	go insertNewMessageToDatasTable(data, &wg)
+	wg.Wait()
+	(*w).WriteHeader(http.StatusCreated)
 }
 
-func insertNewMessageToDatasTable(data Message) {
+func insertNewMessageToDatasTable(data Message, wg *sync.WaitGroup) {
+	defer wg.Done()
 	db := connectSqlDB()
 	stmt, err := db.Prepare("INSERT INTO datas_table (uuid,message,author,likes) VALUES (?,?,?,?) ")
 	if err != nil {
@@ -33,7 +44,8 @@ func insertNewMessageToDatasTable(data Message) {
 	fmt.Println(res.RowsAffected())
 }
 
-func insertNewUUIDToMapsTable(uuid string, idx int) {
+func insertNewUUIDToMapsTable(uuid string, idx int, wg *sync.WaitGroup) {
+	defer wg.Done()
 	db := connectSqlDB()
 	stmt, err := db.Prepare("INSERT INTO maps_table (uuid,idx) VALUES (?,?) ")
 	if err != nil {

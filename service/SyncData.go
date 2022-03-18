@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -41,6 +40,7 @@ func SyncMessages(idx int, qidx int) SyncResponse {
 
 // Get new messages from datas_table
 func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
+	defer wg.Done()
 	// select all new messages
 	db := connectSqlDB()
 	stmt, err := db.Prepare("SELECT * FROM datas_table WHERE idx > ? ")
@@ -65,7 +65,6 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	} else {
 		*lastIdx = idx
 	}
-	defer wg.Done()
 }
 
 // Get updated message from data_tables by look at updates_table

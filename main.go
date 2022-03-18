@@ -19,9 +19,9 @@ func handleRequests() {
 	Router := mux.NewRouter().StrictSlash(true)
 	Router.HandleFunc("/", homePage)
 	Router.HandleFunc("/api/messages", sync).Methods("GET")
-	Router.HandleFunc("/message", postMessage).Methods("POST")
-	Router.HandleFunc("/message", updateMessage).Methods("PUT")
-	Router.HandleFunc("/message/{uuid}", deleteMessage).Methods("DELETE")
+	Router.HandleFunc("/api/messages", postMessage).Methods("POST")
+	Router.HandleFunc("/api/messages/{uuid}", updateMessage).Methods("PUT")
+	Router.HandleFunc("/api/messages/{uuid}", deleteMessage).Methods("DELETE")
 	log.Fatal(http.ListenAndServe(":80", Router))
 }
 
@@ -34,25 +34,27 @@ func postMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	Service.CreateNewMessage(data)
+	Service.CreateNewMessage(data, &w)
 }
 
 func updateMessage(w http.ResponseWriter, r *http.Request) {
 	var data Service.Message
-	fmt.Print(data)
+	params := mux.Vars(r)
 	err := json.NewDecoder(r.Body).Decode(&data)
+	data.Uuid = params["uuid"]
+	fmt.Println(data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	Service.UpdateMessage(data)
+	Service.UpdateMessage(data, &w)
 }
 
 func deleteMessage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	fmt.Println(params["uuid"])
-	Service.DeleteMessage(params["uuid"])
+	Service.DeleteMessage(params["uuid"], &w)
 }
 
 func main() {
