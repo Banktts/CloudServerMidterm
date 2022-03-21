@@ -11,7 +11,7 @@ type Message struct {
 	Uuid    string `json:"uuid"`
 	Message string `json:"message"`
 	Author  string `json:"author"`
-	Likes   int    `json:"likes"`
+	Likes   uint    `json:"likes"`
 }
 
 func CreateNewMessage(data Message, w *http.ResponseWriter) {
