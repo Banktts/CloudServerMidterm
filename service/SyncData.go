@@ -5,19 +5,19 @@ import (
 )
 
 type MessageWithId struct {
-	Idx		int	   `json:"idx"`
-	Uuid    string `json:"uuid"`
-	Message string `json:"message"`
-	Author  string `json:"author"`
-	Likes   uint32   `json:"likes"`
+	Idx     int    `json:"idx"`
+	Uuid    string `gorm:"size:36" json:"uuid"`
+	Message string `gorm:"size:1024" json:"message"`
+	Author  string `gorm:"size:64" json:"author"`
+	Likes   uint32 `json:"likes"`
 }
 
 type SyncResponse struct {
-	NewMessages		[]MessageWithId `json:"newMessages"`
-	UpdateMessages 	[]MessageWithId `json:"updateMessages"`
-	DeleteListIdx 	[]int 			`json:"deleteListIdx"`
-	LastIdx 		int 			`json:"lastIdx"`
-	LastQidx 		int 			`json:"lastQidx"`
+	NewMessages    []MessageWithId `json:"newMessages"`
+	UpdateMessages []MessageWithId `json:"updateMessages"`
+	DeleteListIdx  []int           `json:"deleteListIdx"`
+	LastIdx        int             `json:"lastIdx"`
+	LastQidx       int             `json:"lastQidx"`
 }
 
 func SyncMessages(idx int, qidx int) SyncResponse {
@@ -75,11 +75,11 @@ func GetUpdateMessages(qidx int, updateMessages *[]MessageWithId, wg *sync.WaitG
 	// select all update message
 	db := connectSqlDB()
 	defer db.Close()
-	stmt, err := db.Prepare("SELECT datas_table.idx,datas_table.uuid,datas_table.message,datas_table.author,datas_table.likes " + 
-	"FROM datas_table " +
-	"INNER JOIN updates_table " +
-	"ON datas_table.idx = updates_table.idx " +
-	"WHERE updates_table.qidx > ? AND updates_table.deleteMethod = false")
+	stmt, err := db.Prepare("SELECT datas_table.idx,datas_table.uuid,datas_table.message,datas_table.author,datas_table.likes " +
+		"FROM datas_table " +
+		"INNER JOIN updates_table " +
+		"ON datas_table.idx = updates_table.idx " +
+		"WHERE updates_table.qidx > ? AND updates_table.deleteMethod = false")
 	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
