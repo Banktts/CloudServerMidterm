@@ -31,9 +31,11 @@ func CreateNewMessage(data Message, w *http.ResponseWriter) {
 }
 
 func insertNewMessageToDatasTable(data Message, wg *sync.WaitGroup) {
-	defer wg.Done()
+	defer wg.Done()	
 	db := connectSqlDB()
+	defer db.Close()
 	stmt, err := db.Prepare("INSERT INTO datas_table (uuid,message,author,likes) VALUES (?,?,?,?) ")
+	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -47,7 +49,9 @@ func insertNewMessageToDatasTable(data Message, wg *sync.WaitGroup) {
 func insertNewUUIDToMapsTable(uuid string, idx int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	db := connectSqlDB()
+	defer db.Close()
 	stmt, err := db.Prepare("INSERT INTO maps_table (uuid,idx) VALUES (?,?) ")
+	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -61,6 +65,7 @@ func insertNewUUIDToMapsTable(uuid string, idx int, wg *sync.WaitGroup) {
 func getMessageLastIdx() int {
 	var Idx int
 	db := connectSqlDB()
+	defer db.Close()
 	err1 := db.QueryRow("select idx from datas_table ORDER BY idx DESC LIMIT 1").Scan(&Idx)
 	if err1 != nil {
 		fmt.Println(err1)

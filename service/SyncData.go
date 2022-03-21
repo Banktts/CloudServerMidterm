@@ -43,7 +43,9 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	defer wg.Done()
 	// select all new messages
 	db := connectSqlDB()
+	defer db.Close()
 	stmt, err := db.Prepare("SELECT * FROM datas_table WHERE idx > ? ")
+	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -72,11 +74,13 @@ func GetUpdateMessages(qidx int, updateMessages *[]MessageWithId, wg *sync.WaitG
 	defer wg.Done()
 	// select all update message
 	db := connectSqlDB()
+	defer db.Close()
 	stmt, err := db.Prepare("SELECT datas_table.idx,datas_table.uuid,datas_table.message,datas_table.author,datas_table.likes " + 
 	"FROM datas_table " +
 	"INNER JOIN updates_table " +
 	"ON datas_table.idx = updates_table.idx " +
 	"WHERE updates_table.qidx > ? AND updates_table.deleteMethod = false")
+	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -100,7 +104,9 @@ func GetDeleteListIdx(qidx int, deleteListIdx *[]int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// select all idx that mark as delete
 	db := connectSqlDB()
+	defer db.Close()
 	stmt, err := db.Prepare("SELECT idx FROM updates_table WHERE qidx > ? AND deleteMethod = true")
+	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -124,6 +130,7 @@ func GetLastQidx(lastQidx *int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// select lastest qidx
 	db := connectSqlDB()
+	defer db.Close()
 	err1 := db.QueryRow("SELECT qidx FROM updates_table ORDER BY qidx DESC LIMIT 1").Scan(lastQidx)
 	if err1 != nil {
 		panic(err1.Error())
