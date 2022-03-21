@@ -9,7 +9,7 @@ type MessageWithId struct {
 	Uuid    string `json:"uuid"`
 	Message string `json:"message"`
 	Author  string `json:"author"`
-	Likes   uint   `json:"likes"`
+	Likes   uint32   `json:"likes"`
 }
 
 type SyncResponse struct {
