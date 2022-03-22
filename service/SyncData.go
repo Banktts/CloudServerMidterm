@@ -131,8 +131,12 @@ func GetLastQidx(lastQidx *int, wg *sync.WaitGroup) {
 	// select lastest qidx
 	db := connectSqlDB()
 	defer db.Close()
-	err1 := db.QueryRow("SELECT qidx FROM updates_table ORDER BY qidx DESC LIMIT 1").Scan(lastQidx)
-	if err1 != nil {
-		panic(err1.Error())
+	res := db.QueryRow("SELECT qidx FROM updates_table ORDER BY qidx DESC LIMIT 1")
+	*lastQidx = -1
+	if res == nil {
+		err1 := res.Scan(lastQidx)
+		if err1 != nil {
+			panic(err1.Error())
+		}
 	}
 }
