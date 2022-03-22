@@ -43,7 +43,7 @@ func SyncMessages(idx int, qidx int) SyncResponse {
 
 // GetNewMessages config
 const itemPerQuery = 5000
-const maxQuery = 50
+const maxQuery = 20
 
 // Get new messages from datas_table
 func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
@@ -67,7 +67,7 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 		// add buffer chan to limit number of thread; will stall until have space
 		bufferChan <- 1
 		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2, bufferChan)
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 	}
 	close(bufferChan)
