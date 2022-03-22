@@ -44,7 +44,7 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	// select all new messages
 	db := connectSqlDB()
 	defer db.Close()
-	stmt, err := db.Prepare("SELECT * FROM datas_table WHERE idx > ? ")
+	stmt, err := db.Prepare("SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > ? ")
 	defer stmt.Close()
 	if err != nil {
 		panic(err.Error())
@@ -56,7 +56,7 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	// convert all response to MessageWithId struct and store inside slice
 	for res.Next() {
 		var m MessageWithId
-		err3 := res.Scan(&m.Idx, &m.Uuid, &m.Message, &m.Author, &m.Likes)
+		err3 := res.Scan(&m.Idx, &m.Uuid, &m.Message, &m.Likes, &m.Author)
 		if err3 != nil {
 			panic(err3.Error())
 		}
