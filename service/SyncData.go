@@ -16,7 +16,8 @@ type MessageWithId struct {
 }
 
 type SyncResponse struct {
-	NewMessages    []MessageWithId `json:"newMessages"`
+	NewMessages	   map[int][]MessageWithId `json:"newMessages"`
+	// NewMessages    []MessageWithId `json:"newMessages"`
 	UpdateMessages []MessageWithId `json:"updateMessages"`
 	DeleteListIdx  []int           `json:"deleteListIdx"`
 	LastIdx        int             `json:"lastIdx"`
@@ -27,12 +28,14 @@ func SyncMessages(idx int, qidx int) SyncResponse {
 	// wait group
 	var wg sync.WaitGroup
 	// pointer variables
-	var newMessages, updateMessages []MessageWithId
+	// var newMessages, updateMessages []MessageWithId
+	var updateMessages []MessageWithId
 	var lastIdx, lastQidx int
 	var deleteListIdx []int
+	newMessages := make(map[int][]MessageWithId)
 	// run in parallel
 	wg.Add(4)
-	go GetNewMessages(idx, &newMessages, &lastIdx, &wg)
+	go GetNewMessages(idx, newMessages, &lastIdx, &wg)
 	go GetUpdateMessages(qidx, &updateMessages, &wg)
 	go GetDeleteListIdx(qidx, &deleteListIdx, &wg)
 	go GetLastQidx(&lastQidx, &wg)
@@ -46,7 +49,7 @@ const itemPerQuery = 5000
 const maxQuery = 20
 
 // Get new messages from datas_table
-func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
+func GetNewMessages(idx int, newMessages map[int][]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	// get last idx
 	GetLastIdx(lastIdx)
@@ -59,23 +62,22 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	}
 	queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > "+strconv.Itoa(cidx))
 	// select all new messages
-	resMap := make(map[int][]MessageWithId)
 	var wg2 sync.WaitGroup
 	bufferChan := make(chan int, maxQuery)
 	wg2.Add(len(queries))
 	for coroutineIdx, query := range queries {
 		// add buffer chan to limit number of thread; will stall until have space
 		bufferChan <- 1
-		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2, bufferChan)
+		go GetNewMessagesFragment(query, coroutineIdx, newMessages, &wg2, bufferChan)
 		time.Sleep(10 * time.Millisecond)
 
 	}
 	close(bufferChan)
 	wg2.Wait()
 	// concat all new messages
-	for coroutineIdx, _ := range queries {
-		*newMessages = append(*newMessages, resMap[coroutineIdx]...)
-	}
+	// for coroutineIdx, _ := range queries {
+	// 	*newMessages = append(*newMessages, resMap[coroutineIdx]...)
+	// }
 }
 
 func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]MessageWithId, wg2 *sync.WaitGroup, bufferChan chan int) {
