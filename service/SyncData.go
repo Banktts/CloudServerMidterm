@@ -4,6 +4,7 @@ import (
 	"sync"
 	"strconv"
 	"fmt"
+	"time"
 )
 
 type MessageWithId struct {
@@ -59,6 +60,7 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	wg2.Add(len(queries))
 	for coroutineIdx, query := range queries {
 		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2)
+		time.Sleep(10 * time.Millisecond)
 	}
 	wg2.Wait()
 	// concat all new messages
