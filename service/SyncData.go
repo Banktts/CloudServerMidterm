@@ -1,9 +1,9 @@
 package service
 
 import (
-	"sync"
-	"strconv"
 	"fmt"
+	"strconv"
+	"sync"
 	"time"
 )
 
@@ -42,8 +42,8 @@ func SyncMessages(idx int, qidx int) SyncResponse {
 }
 
 // GetNewMessages config
-const itemPerQuery = 1000
-const maxQuery = 10
+const itemPerQuery = 5000
+const maxQuery = 50
 
 // Get new messages from datas_table
 func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
@@ -53,11 +53,11 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	// create queries for concurrent query
 	var queries []string
 	cidx := idx
-	for cidx + itemPerQuery < *lastIdx {
-		queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > " + strconv.Itoa(cidx) + " && idx <= " + strconv.Itoa(cidx + itemPerQuery))		
+	for cidx+itemPerQuery < *lastIdx {
+		queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > "+strconv.Itoa(cidx)+" && idx <= "+strconv.Itoa(cidx+itemPerQuery))
 		cidx = cidx + itemPerQuery
 	}
-	queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > " + strconv.Itoa(cidx))
+	queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > "+strconv.Itoa(cidx))
 	// select all new messages
 	resMap := make(map[int][]MessageWithId)
 	var wg2 sync.WaitGroup
@@ -67,8 +67,10 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 		// add buffer chan to limit number of thread; will stall until have space
 		bufferChan <- 1
 		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2, bufferChan)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
+
 	}
+	close(bufferChan)
 	wg2.Wait()
 	// concat all new messages
 	for coroutineIdx, _ := range queries {
@@ -76,7 +78,8 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	}
 }
 
-func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]MessageWithId, wg2 *sync.WaitGroup, bufferChan chan int) {	
+func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]MessageWithId, wg2 *sync.WaitGroup, bufferChan chan int) {
+	fmt.Println("routine index", coroutineIdx)
 	defer wg2.Done()
 	db := connectSqlDB()
 	defer db.Close()
@@ -96,7 +99,7 @@ func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]Mes
 	}
 	resMap[coroutineIdx] = fragmentNewMessages
 	// release buffer chan
-	<- bufferChan
+	<-bufferChan
 }
 
 // Get updated message from data_tables by look at updates_table
