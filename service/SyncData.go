@@ -41,6 +41,10 @@ func SyncMessages(idx int, qidx int) SyncResponse {
 	return SyncResponse{newMessages, updateMessages, deleteListIdx, lastIdx, lastQidx}
 }
 
+// GetNewMessages config
+const itemPerQuery = 1000
+const maxQuery = 10
+
 // Get new messages from datas_table
 func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -49,17 +53,20 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	// create queries for concurrent query
 	var queries []string
 	cidx := idx
-	for cidx + 1000 < *lastIdx {
-		queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > " + strconv.Itoa(cidx) + " && idx <= " + strconv.Itoa(cidx + 1000))		
-		cidx = cidx + 1000
+	for cidx + itemPerQuery < *lastIdx {
+		queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > " + strconv.Itoa(cidx) + " && idx <= " + strconv.Itoa(cidx + itemPerQuery))		
+		cidx = cidx + itemPerQuery
 	}
 	queries = append(queries, "SELECT idx,uuid,message,likes,author FROM datas_table WHERE idx > " + strconv.Itoa(cidx))
 	// select all new messages
 	resMap := make(map[int][]MessageWithId)
 	var wg2 sync.WaitGroup
+	bufferChan := make(chan int, maxQuery)
 	wg2.Add(len(queries))
 	for coroutineIdx, query := range queries {
-		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2)
+		// add buffer chan to limit number of thread; will stall until have space
+		bufferChan <- 1
+		go GetNewMessagesFragment(query, coroutineIdx, resMap, &wg2, bufferChan)
 		time.Sleep(10 * time.Millisecond)
 	}
 	wg2.Wait()
@@ -69,7 +76,7 @@ func GetNewMessages(idx int, newMessages *[]MessageWithId, lastIdx *int, wg *syn
 	}
 }
 
-func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]MessageWithId, wg2 *sync.WaitGroup) {	
+func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]MessageWithId, wg2 *sync.WaitGroup, bufferChan chan int) {	
 	defer wg2.Done()
 	db := connectSqlDB()
 	defer db.Close()
@@ -88,6 +95,8 @@ func GetNewMessagesFragment(query string, coroutineIdx int, resMap map[int][]Mes
 		fragmentNewMessages = append(fragmentNewMessages, m)
 	}
 	resMap[coroutineIdx] = fragmentNewMessages
+	// release buffer chan
+	<- bufferChan
 }
 
 // Get updated message from data_tables by look at updates_table
