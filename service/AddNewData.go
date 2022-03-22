@@ -3,15 +3,15 @@ package service
 import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"sync"
 	"net/http"
+	"sync"
 )
 
 type Message struct {
-	Uuid    string `json:"uuid"`
-	Message string `json:"message"`
-	Author  string `json:"author"`
-	Likes   uint    `json:"likes"`
+	Uuid    string `gorm:"size:36" json:"uuid"`
+	Message string `gorm:"size:1024" json:"message"`
+	Author  string `gorm:"size:64" json:"author"`
+	Likes   uint32 `json:"likes"`
 }
 
 func CreateNewMessage(data Message, w *http.ResponseWriter) {
@@ -31,7 +31,7 @@ func CreateNewMessage(data Message, w *http.ResponseWriter) {
 }
 
 func insertNewMessageToDatasTable(data Message, wg *sync.WaitGroup) {
-	defer wg.Done()	
+	defer wg.Done()
 	db := connectSqlDB()
 	defer db.Close()
 	stmt, err := db.Prepare("INSERT INTO datas_table (uuid,message,author,likes) VALUES (?,?,?,?) ")
